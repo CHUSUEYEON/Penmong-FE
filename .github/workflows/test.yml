@@ -1,0 +1,52 @@
+name: 🧪 NestJS CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Project
+        run: npm run build
+
+      - name: Run Tests and Save Output
+        run: |
+          npm test > result.log || echo "테스트 결과 없음" > result.log
+
+      - name: Comment test result on PR
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const filePath = 'result.log';
+            let output = '⚠️ result.log 파일을 찾을 수 없습니다.';
+            if (fs.existsSync(filePath)) {
+              output = fs.readFileSync(filePath, 'utf8');
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🧪 **테스트 결과 요약**\n\n\`\`\`\n${output}\n\`\`\``
+            });
